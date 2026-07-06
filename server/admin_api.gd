@@ -1,13 +1,6 @@
 class_name AdminApi
 extends RefCounted
 
-## Admin REST surface, authenticated by the ADMIN_API_SECRET bearer token.
-##   POST   /admin/keys           {id, scopes:[...]}  -> {id, secret, scopes}   (secret shown once)
-##   GET    /admin/keys                               -> {keys:[...]}
-##   DELETE /admin/keys/{id}                           -> {ok}
-##   GET    /admin/matches                            -> {matches:[...]}
-##   DELETE /admin/matches/{code}                      -> {ok}
-## Match state lives in the registry (Phase 2); admin can delete any match.
 
 var _db: JenDb
 var _secret: String

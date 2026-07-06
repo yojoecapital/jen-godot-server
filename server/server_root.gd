@@ -1,13 +1,5 @@
 extends Node
 
-## Entry point for the Jen dedicated server. Boots the SQLite store, the admin
-## REST API, and the WebSocket gameplay gateway, then pumps them every frame.
-## Configuration comes entirely from environment variables so the same build runs
-## unchanged in Docker.
-##   ADMIN_API_SECRET  (required) bearer token for the admin REST API
-##   DB_PATH           SQLite file path            (default: user://jen.db)
-##   ADMIN_PORT        admin REST port             (default: 8080)
-##   WS_PORT           gameplay WebSocket port     (default: 8081)
 
 var _db: JenDb
 var _registry: MatchRegistry

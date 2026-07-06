@@ -1,8 +1,6 @@
 class_name JenAuth
 extends Object
 
-## Stateless helpers for API-key secrets and admin-secret comparison. Secrets are
-## never stored in plaintext — only their SHA-256 hex digest lands in the DB.
 
 const VALID_SCOPES := ["host_match", "join_match"]
 

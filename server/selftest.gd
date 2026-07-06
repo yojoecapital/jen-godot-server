@@ -1,10 +1,5 @@
 extends SceneTree
 
-## Headless self-test for the admin layer — no networking, so it runs cleanly in
-## one foreground pass:
-##   godot --headless --path jen-godot-server -s res://server/selftest.gd
-## Exercises AdminApi routing/auth against a real SQLite JenDb, the HTTP request
-## parser, and the auth helpers. Exits 0 on success, 1 on any failure.
 
 var _fails := 0
 

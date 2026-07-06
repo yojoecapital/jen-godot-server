@@ -1,11 +1,6 @@
 class_name AdminHttpServer
 extends RefCounted
 
-## Minimal, polled HTTP/1.1 server over TCPServer for the admin REST API. One
-## request per connection (Connection: close); no keep-alive, no chunked bodies.
-## Godot ships no HTTP server, so this parses request-line + headers + a
-## Content-Length body itself and hands (method, path, headers, body) to a router
-## Callable that returns {status:int, json:Variant}.
 
 const _MAX_REQUEST_BYTES := 1 << 20   # 1 MiB guard
 const _CONN_TIMEOUT_MS := 5000

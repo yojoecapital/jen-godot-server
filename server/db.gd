@@ -1,10 +1,6 @@
 class_name JenDb
 extends Object
 
-## Thin SQLite wrapper (godot-sqlite GDExtension). Owns two tables:
-##   api_keys — admin-issued client credentials (id, secret hash, scopes)
-##   matches  — persisted authoritative match state (JSON snapshot + metadata)
-## All writes are parameterized; secrets are stored only as SHA-256 hex.
 
 var _db: SQLite
 

@@ -1,11 +1,6 @@
 class_name WsGateway
 extends RefCounted
 
-## Plain-WebSocket gameplay gateway. Accepts raw TCP connections and upgrades each
-## with WebSocketPeer.accept_stream (so it pairs with the client's WebSocketPeer),
-## authenticates by API-key secret -> scopes, claims a human seat per client, and
-## routes JSON messages to the MatchRegistry. Broadcasts the registry's authoritative
-## action stream to every client in a match; clients replay it deterministically.
 
 var _db: JenDb
 var _registry: MatchRegistry

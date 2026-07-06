@@ -1,9 +1,5 @@
 extends SceneTree
 
-## Headless self-test for the authoritative gameplay layer (no networking):
-##   godot --headless --path jen-godot-server -s res://server/match_selftest.gd
-## Covers match creation, turn/ownership validation, server-side CPU stepping,
-## deterministic replay (the client-sync guarantee), and SQLite persistence/resume.
 
 var _fails := 0
 

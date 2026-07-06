@@ -1,13 +1,6 @@
 class_name MatchRegistry
 extends RefCounted
 
-## The authoritative match store. Pure logic (no networking) so it is headless-
-## testable: holds every live match's GameState/TurnManager/seeded RNG, validates
-## turn + actor ownership, applies via ActionExecutor, drives CPU seats with
-## HeuristicPolicy, and persists whole-match snapshots (incl. RNG state) to SQLite
-## so matches survive restarts. The WS gateway calls these methods and broadcasts
-## the returned action stream; clients reproduce it deterministically from the
-## shared seed + RNG state.
 
 const CODE_CHARS := "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 const CODE_LEN := 4
