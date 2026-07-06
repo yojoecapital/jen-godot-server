@@ -1,0 +1,6 @@
+.git
+.godot
+build
+*.log
+*.md
+selftest.db*

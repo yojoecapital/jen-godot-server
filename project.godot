@@ -1,0 +1,16 @@
+; Engine configuration file.
+; Jen authoritative dedicated server — headless, no rendering.
+
+config_version=5
+
+[application]
+
+config/name="Jen Server"
+run/main_scene="res://server/server_root.tscn"
+config/features=PackedStringArray("4.6")
+run/disable_stdout=false
+boot_splash/show_image=false
+
+[debug]
+
+settings/stdout/print_fps=false

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cjenserver0root"]
+
+[ext_resource type="Script" path="res://server/server_root.gd" id="1_root"]
+
+[node name="ServerRoot" type="Node"]
+script = ExtResource("1_root")
