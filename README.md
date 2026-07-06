@@ -1,81 +1,116 @@
 # jen-godot-server
 
-Authoritative dedicated server for [Jen](https://github.com/yojoecapital/jen-godot) — a headless
-Godot 4.6 build that is the single source of truth for online matches. Clients send input over
-WebSockets; the server validates and applies it against the shared rules
-([jen-godot-simulation](https://github.com/yojoecapital/jen-godot-simulation), a submodule),
-drives CPU seats, and streams the authoritative action stream back. State is persisted in SQLite.
+Authoritative dedicated server for [Jen](https://github.com/yojoecapital/jen-godot).
 
-## Layout
+This is a headless Godot 4.6 application that serves as the single source of truth for online matches. Clients send player input over WebSockets, the server validates and applies that input using the shared simulation rules ([jen-godot-simulation](https://github.com/yojoecapital/jen-godot-simulation), included as a submodule), drives CPU-controlled players, and streams the resulting authoritative action log back to connected clients. Match state is persisted in SQLite.
 
-```
-project.godot              # headless project; main scene = server/server_root.tscn
-simulation/                # submodule: shared rules + AI + serialization
+## Project layout
+
+```text
+project.godot              # Headless project (main scene: server/server_root.tscn)
+simulation/                # Submodule: shared simulation, AI, serialization
 addons/godot-sqlite/       # SQLite GDExtension (Linux x86_64)
+
 server/
-  server_root.gd/.tscn     # boot: open DB, start admin REST + (Phase 2) WS gateway
-  db.gd                    # SQLite: api_keys + matches
-  auth.gd                  # secret generation/hashing, scope checks
-  admin_api.gd             # admin REST handlers
-  admin_http_server.gd     # minimal polled HTTP/1.1 over TCPServer
-  selftest.gd              # headless self-test of the admin layer
-export_presets.cfg         # "Linux Server" dedicated-server preset
+  server_root.gd/.tscn     # Boot: initialize DB, start admin API and WebSocket server
+  db.gd                    # SQLite persistence (API keys, matches)
+  auth.gd                  # Secret generation, hashing, scope validation
+  admin_api.gd             # Admin API handlers
+  admin_http_server.gd     # Minimal HTTP/1.1 server over TCPServer
+  selftest.gd              # Headless integration tests
+
+export_presets.cfg         # Dedicated Linux Server export preset
 Dockerfile
 ```
 
-## Configuration (environment variables)
+## Configuration
 
-| Var | Required | Default | Purpose |
-|---|---|---|---|
-| `ADMIN_API_SECRET` | **yes** | — | Bearer token for the admin REST API |
-| `DB_PATH` | no | `user://jen.db` (`/data/jen.db` in Docker) | SQLite file |
-| `ADMIN_PORT` | no | `8080` | Admin REST port |
-| `WS_PORT` | no | `8081` | Gameplay WebSocket port |
+| Variable           | Required | Default                                    | Description                                     |
+| ------------------ | -------- | ------------------------------------------ | ----------------------------------------------- |
+| `ADMIN_API_SECRET` | **Yes**  | —                                          | Bearer token used to authenticate the admin API |
+| `DB_PATH`          | No       | `user://jen.db` (`/data/jen.db` in Docker) | SQLite database location                        |
+| `ADMIN_PORT`       | No       | `8080`                                     | Admin API port                                  |
+| `WS_PORT`          | No       | `8081`                                     | Gameplay WebSocket port                         |
 
-## Run with Docker
+## Running with Docker
 
 ```bash
 git clone --recurse-submodules git@github.com:yojoecapital/jen-godot-server.git
 cd jen-godot-server
+
 docker build -t jen-server .
-docker run -d --name jen-server \
-  -e ADMIN_API_SECRET="$(openssl rand -hex 24)" \
+
+docker run -d \
+  --name jen-server \
+  -e ADMIN_API_SECRET="keep_your_head_up" \
   -v jen-data:/data \
-  -p 8080:8080 -p 8081:8081 \
+  -p 8080:8080 \
+  -p 8081:8081 \
   jen-server
 ```
 
-`-v jen-data:/data` persists `/data/jen.db` (API keys + match snapshots) across restarts. The
-Docker image pins the Godot version via `--build-arg GODOT_VERSION=4.6.2`.
+The `jen-data` volume persists `/data/jen.db`, including API keys and match snapshots, across container restarts.
+
+The Docker image pins the Godot version via:
+
+```text
+--build-arg GODOT_VERSION=4.6.2
+```
 
 ## Admin API
 
-All requests require `Authorization: Bearer $ADMIN_API_SECRET`.
+All endpoints require:
 
-```bash
-S=http://localhost:8080; H="Authorization: Bearer $ADMIN_API_SECRET"
-
-# create a client key that may host (and join) matches — the secret is shown once
-curl -H "$H" -d '{"id":"alice","scopes":["host_match","join_match"]}' $S/admin/keys
-# create a join-only key
-curl -H "$H" -d '{"id":"bob","scopes":["join_match"]}' $S/admin/keys
-
-curl -H "$H" $S/admin/keys                 # list keys (no secrets)
-curl -H "$H" -X DELETE $S/admin/keys/alice # revoke a key
-curl -H "$H" $S/admin/matches              # list matches
-curl -H "$H" -X DELETE $S/admin/matches/AB12  # delete any match
+```text
+Authorization: Bearer $ADMIN_API_SECRET
 ```
 
-Give the returned `id` + `secret` and the server's WebSocket URL (`ws://host:8081`) to a player;
-they enter them under **Settings → Online** in the game client. `host_match` keys can create
-matches (and delete the ones they created); `join_match` keys can only join.
+Example usage:
+
+```bash
+S=http://localhost:8080
+H="Authorization: Bearer $ADMIN_API_SECRET"
+
+# Create a host key (can also join matches).
+# The secret is returned only once.
+curl -H "$H" \
+  -d '{"id":"alice","scopes":["host_match","join_match"]}' \
+  $S/admin/keys
+
+# Create a join-only key.
+curl -H "$H" \
+  -d '{"id":"bob","scopes":["join_match"]}' \
+  $S/admin/keys
+
+# List keys (secrets are never returned).
+curl -H "$H" $S/admin/keys
+
+# Revoke a key.
+curl -H "$H" -X DELETE $S/admin/keys/alice
+
+# List matches.
+curl -H "$H" $S/admin/matches
+
+# Delete a match.
+curl -H "$H" -X DELETE $S/admin/matches/AB12
+```
+
+Provide players with the returned `id` and `secret`, along with the server's WebSocket URL (for example, `ws://host:8081`). They can enter these under **Settings → Online** in the game client.
+
+Permission scopes:
+
+* `host_match` — create matches, join matches, and delete matches that the key created.
+* `join_match` — join existing matches only.
 
 ## Local development
 
 ```bash
 git submodule update --init --recursive
-# self-test the admin layer (SQLite + routing + auth + HTTP parsing), no networking:
+
+# Run the headless integration tests (SQLite, routing, auth, HTTP parsing).
 godot --headless --path . -s res://server/selftest.gd
-# run the server locally:
-ADMIN_API_SECRET=dev godot --headless --path . res://server/server_root.tscn
+
+# Run the server locally.
+ADMIN_API_SECRET=dev \
+godot --headless --path . res://server/server_root.tscn
 ```
