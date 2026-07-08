@@ -45,10 +45,10 @@ func _initialize() -> void:
 	var res2 := reg2.apply(str(created2["code"]), 0, Action.end_turn().to_dict())
 	_eq(res2["state_hash"], hash_after, "deterministic replay: identical seed+actions => identical state")
 
-	# persistence: drop from memory, rehydrate from SQLite, hash must survive
+	# persistence: drop from memory, rehydrate from persistence, hash must survive
 	reg.drop_match(code)
 	var resumed := reg.view(code)
-	_check(resumed["ok"], "match rehydrated from SQLite after eviction")
+	_check(resumed["ok"], "match rehydrated from persistence after eviction")
 	# recompute the live hash on the resumed match via another no-op path
 	_check(resumed["snapshot"].has("rng_state"), "resumed snapshot keeps rng_state")
 	var resumed_hash := str(hash(JSON.stringify(resumed["snapshot"])))

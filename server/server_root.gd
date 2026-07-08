@@ -18,7 +18,7 @@ func _ready() -> void:
 
 	_db = JenDb.new()
 	if not _db.open(db_path):
-		push_error("Could not open the SQLite database at %s" % db_path)
+		push_error("Could not open the persistence database at %s" % db_path)
 		get_tree().quit(1)
 		return
 	print("[jen-server] db ready at ", db_path)

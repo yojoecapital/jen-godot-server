@@ -2,113 +2,225 @@ class_name JenDb
 extends Object
 
 
-var _db: SQLite
+var _data_path: String = "res://data"
+var _keys_file: String
+var _matches_path: String
 
 
 func open(path: String) -> bool:
-	_db = SQLite.new()
-	_db.path = path
-	_db.verbosity_level = SQLite.QUIET
-	if not _db.open_db():
-		return false
-	_db.query("PRAGMA journal_mode=WAL;")
-	_db.query("""CREATE TABLE IF NOT EXISTS api_keys (
-		id TEXT PRIMARY KEY,
-		secret_hash TEXT NOT NULL,
-		scopes TEXT NOT NULL,
-		created_at INTEGER NOT NULL
-	);""")
-	_db.query("""CREATE TABLE IF NOT EXISTS matches (
-		code TEXT PRIMARY KEY,
-		owner_key_id TEXT NOT NULL,
-		seed INTEGER NOT NULL,
-		seats TEXT NOT NULL,
-		snapshot TEXT NOT NULL,
-		status TEXT NOT NULL,
-		created_at INTEGER NOT NULL,
-		updated_at INTEGER NOT NULL
-	);""")
+	_data_path = path
+	_keys_file = _data_path.path_join("keys.json")
+	_matches_path = _data_path.path_join("matches")
+
+	if not DirAccess.dir_exists_absolute(_data_path):
+		DirAccess.make_dir_recursive_absolute(_data_path)
+
+	if not DirAccess.dir_exists_absolute(_matches_path):
+		DirAccess.make_dir_recursive_absolute(_matches_path)
+
+	if not FileAccess.file_exists(_keys_file):
+		_save_json(_keys_file, [])
+
 	return true
 
 
 func close() -> void:
-	if _db != null:
-		_db.close_db()
+	pass
 
 
 # ---- api_keys ----
 
+
 func insert_key(id: String, secret_hash: String, scopes: Array) -> bool:
-	return _db.query_with_bindings(
-		"INSERT INTO api_keys (id, secret_hash, scopes, created_at) VALUES (?, ?, ?, ?);",
-		[id, secret_hash, JSON.stringify(scopes), _now()])
+	var keys := _load_json(_keys_file)
+
+	for key in keys:
+		if key.get("id") == id:
+			return false
+
+	keys.append({
+		"id": id,
+		"secret_hash": secret_hash,
+		"scopes": scopes,
+		"created_at": _now()
+	})
+
+	return _save_json(_keys_file, keys)
 
 
 func key_exists(id: String) -> bool:
-	_db.query_with_bindings("SELECT 1 FROM api_keys WHERE id = ?;", [id])
-	return not _db.query_result.is_empty()
+	return not get_key_by_id(id).is_empty()
 
 
 func get_key_by_id(id: String) -> Dictionary:
-	_db.query_with_bindings(
-		"SELECT id, scopes, created_at FROM api_keys WHERE id = ?;", [id])
-	return _row(_db.query_result)
+	var keys := _load_json(_keys_file)
+
+	for key in keys:
+		if key.get("id") == id:
+			return key
+
+	return {}
 
 
 func get_key_by_secret_hash(secret_hash: String) -> Dictionary:
-	_db.query_with_bindings(
-		"SELECT id, scopes, created_at FROM api_keys WHERE secret_hash = ?;", [secret_hash])
-	return _row(_db.query_result)
+	var keys := _load_json(_keys_file)
+
+	for key in keys:
+		if key.get("secret_hash") == secret_hash:
+			return key
+
+	return {}
 
 
 func list_keys() -> Array:
-	_db.query("SELECT id, scopes, created_at FROM api_keys ORDER BY created_at DESC;")
-	return _db.query_result.duplicate()
+	var keys := _load_json(_keys_file)
+	keys.sort_custom(func(a, b):
+		return a.get("created_at", 0) > b.get("created_at", 0)
+	)
+
+	return keys
 
 
 func delete_key(id: String) -> bool:
-	if not key_exists(id):
-		return false
-	return _db.query_with_bindings("DELETE FROM api_keys WHERE id = ?;", [id])
+	var keys := _load_json(_keys_file)
+	var changed := false
+
+	for i in range(keys.size() - 1, -1, -1):
+		if keys[i].get("id") == id:
+			keys.remove_at(i)
+			changed = true
+
+	if changed:
+		return _save_json(_keys_file, keys)
+
+	return false
 
 
 # ---- matches ----
 
-func upsert_match(code: String, owner_key_id: String, seed: int, seats: Array,
-		snapshot: Dictionary, status: String) -> bool:
-	return _db.query_with_bindings(
-		"""INSERT INTO matches (code, owner_key_id, seed, seats, snapshot, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(code) DO UPDATE SET snapshot=excluded.snapshot, status=excluded.status,
-			seats=excluded.seats, updated_at=excluded.updated_at;""",
-		[code, owner_key_id, seed, JSON.stringify(seats), JSON.stringify(snapshot), status, _now(), _now()])
+
+func upsert_match(code: String, owner_key_id: String, seed: int,
+		seats: Array, snapshot: Dictionary, status: String) -> bool:
+
+	var path := _match_file(code)
+	var now := _now()
+
+	var existing := {}
+
+	if FileAccess.file_exists(path):
+		existing = _load_json(path)
+
+	var match_data := {
+		"code": code,
+		"owner_key_id": owner_key_id,
+		"seed": seed,
+		"seats": seats,
+		"snapshot": snapshot,
+		"status": status,
+		"created_at": existing.get("created_at", now),
+		"updated_at": now
+	}
+
+	return _save_json(path, match_data)
 
 
 func get_match(code: String) -> Dictionary:
-	_db.query_with_bindings("SELECT * FROM matches WHERE code = ?;", [code])
-	return _row(_db.query_result)
+	var path := _match_file(code)
+
+	if not FileAccess.file_exists(path):
+		return {}
+
+	return _load_json(path)
 
 
 func list_matches(open_only := false) -> Array:
-	if open_only:
-		_db.query("SELECT code, owner_key_id, seats, status, updated_at FROM matches WHERE status = 'open' ORDER BY updated_at DESC;")
-	else:
-		_db.query("SELECT code, owner_key_id, seats, status, updated_at FROM matches ORDER BY updated_at DESC;")
-	return _db.query_result.duplicate()
+	var result: Array = []
+
+	var dir := DirAccess.open(_matches_path)
+	if dir == null:
+		return result
+
+	dir.list_dir_begin()
+
+	while true:
+		var file := dir.get_next()
+
+		if file == "":
+			break
+
+		if dir.current_is_dir():
+			continue
+
+		if not file.ends_with(".json"):
+			continue
+
+		var match_data := _load_json(_matches_path.path_join(file))
+
+		if open_only and match_data.get("status") != "open":
+			continue
+
+		result.append(match_data)
+
+	dir.list_dir_end()
+
+	result.sort_custom(func(a, b):
+		return a.get("updated_at", 0) > b.get("updated_at", 0)
+	)
+
+	return result
 
 
 func delete_match(code: String) -> bool:
-	_db.query_with_bindings("SELECT 1 FROM matches WHERE code = ?;", [code])
-	if _db.query_result.is_empty():
+	var path := _match_file(code)
+
+	if not FileAccess.file_exists(path):
 		return false
-	return _db.query_with_bindings("DELETE FROM matches WHERE code = ?;", [code])
+
+	DirAccess.remove_absolute(path)
+	return true
 
 
 # ---- helpers ----
 
+
+func _match_file(code: String) -> String:
+	return _matches_path.path_join(code + ".json")
+
+
+func _load_json(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return []
+
+	var file := FileAccess.open(path, FileAccess.READ)
+
+	if file == null:
+		return []
+
+	var text := file.get_as_text()
+	file.close()
+
+	if text.is_empty():
+		return []
+
+	var parsed = JSON.parse_string(text)
+
+	if parsed == null:
+		return []
+
+	return parsed
+
+
+func _save_json(path: String, data: Variant) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+
+	if file == null:
+		return false
+
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+
+	return true
+
+
 static func _now() -> int:
 	return int(Time.get_unix_time_from_system())
-
-
-static func _row(result: Array) -> Dictionary:
-	return result[0] if not result.is_empty() else {}

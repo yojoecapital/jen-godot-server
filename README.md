@@ -2,18 +2,17 @@
 
 Authoritative dedicated server for [Jen](https://github.com/yojoecapital/jen-godot).
 
-This is a headless Godot 4.6 application that serves as the single source of truth for online matches. Clients send player input over WebSockets, the server validates and applies that input using the shared simulation rules ([jen-godot-simulation](https://github.com/yojoecapital/jen-godot-simulation), included as a submodule), drives CPU-controlled players, and streams the resulting authoritative action log back to connected clients. Match state is persisted in SQLite.
+This is a headless Godot 4.6 application that serves as the single source of truth for online matches. Clients send player input over WebSockets, the server validates and applies that input using the shared simulation rules ([jen-godot-simulation](https://github.com/yojoecapital/jen-godot-simulation), included as a submodule), drives CPU-controlled players, and streams the resulting authoritative action log back to connected clients. Match state and server data are persisted as JSON files.
 
 ## Project layout
 
 ```text
 project.godot              # Headless project (main scene: server/server_root.tscn)
 simulation/                # Submodule: shared simulation, AI, serialization
-addons/godot-sqlite/       # SQLite GDExtension (Linux x86_64)
 
 server/
-  server_root.gd/.tscn     # Boot: initialize DB, start admin API and WebSocket server
-  db.gd                    # SQLite persistence (API keys, matches)
+  server_root.gd/.tscn     # Boot: initialize storage, start admin API and WebSocket server
+  db.gd                    # JSON file persistence (API keys, matches)
   auth.gd                  # Secret generation, hashing, scope validation
   admin_api.gd             # Admin API handlers
   admin_http_server.gd     # Minimal HTTP/1.1 server over TCPServer
@@ -23,14 +22,28 @@ export_presets.cfg         # Dedicated Linux Server export preset
 Dockerfile
 ```
 
+## Data storage
+
+The server stores persistent data as JSON files under `/data/`.
+
+```text
+/data/
+  keys.json                # API keys and permissions
+  matches/
+    AB12.json              # Individual match state
+    CD34.json
+```
+
+Each match is stored independently, allowing match state to be loaded, updated, and removed without affecting other matches.
+
 ## Configuration
 
-| Variable           | Required | Default                                    | Description                                     |
-| ------------------ | -------- | ------------------------------------------ | ----------------------------------------------- |
-| `ADMIN_API_SECRET` | **Yes**  | —                                          | Bearer token used to authenticate the admin API |
-| `DB_PATH`          | No       | `user://jen.db` (`/data/jen.db` in Docker) | SQLite database location                        |
-| `ADMIN_PORT`       | No       | `8080`                                     | Admin API port                                  |
-| `WS_PORT`          | No       | `8081`                                     | Gameplay WebSocket port                         |
+| Variable           | Required | Default | Description                                     |
+| ------------------ | -------- | ------- | ----------------------------------------------- |
+| `ADMIN_API_SECRET` | **Yes**  | —       | Bearer token used to authenticate the admin API |
+| `DATA_PATH`        | No       | `/data` | Directory for JSON persistence files            |
+| `ADMIN_PORT`       | No       | `8080`  | Admin API port                                  |
+| `WS_PORT`          | No       | `8081`  | Gameplay WebSocket port                         |
 
 ## Running with Docker
 
@@ -49,7 +62,7 @@ docker run -d \
   jen-server
 ```
 
-The `jen-data` volume persists `/data/jen.db`, including API keys and match snapshots, across container restarts.
+The `jen-data` volume persists `/data/keys.json` and `/data/matches/` across container restarts.
 
 The Docker image pins the Godot version via:
 
@@ -107,10 +120,10 @@ Permission scopes:
 ```bash
 git submodule update --init --recursive
 
-# Run the headless integration tests (SQLite, routing, auth, HTTP parsing).
+# Run the headless integration tests (JSON storage, routing, auth, HTTP parsing).
 godot --headless --path . -s res://server/selftest.gd
 
 # Run the server locally.
 ADMIN_API_SECRET=dev \
-godot --headless --path . res://server/server_root.tscn
+godot --headless --path . res://server/server_root.gd
 ```
