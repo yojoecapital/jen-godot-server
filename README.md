@@ -127,3 +127,19 @@ godot --headless --path . -s res://server/selftest.gd
 ADMIN_API_SECRET=dev \
 godot --headless --path . res://server/server_root.gd
 ```
+
+## Deployment
+
+```bash
+# If needed
+docker buildx create --name multiarch --use
+docker buildx inspect --bootstrap
+docker buildx ls
+
+# Push
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/yojoecapital/$VERSION \
+  --push .
+```
+
