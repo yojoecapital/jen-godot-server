@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://cjenserver0root"]
+[gd_scene format=3 uid="uid://b77ctl6y3oawd"]
 
-[ext_resource type="Script" path="res://server/server_root.gd" id="1_root"]
+[ext_resource type="Script" uid="uid://cckwwu88qg8jb" path="res://server/server_root.gd" id="1_root"]
 
-[node name="ServerRoot" type="Node"]
+[node name="ServerRoot" type="Node" unique_id=1193991086]
 script = ExtResource("1_root")

@@ -32,7 +32,7 @@ func close() -> void:
 
 
 func insert_key(id: String, secret_hash: String, scopes: Array) -> bool:
-	var keys := _load_json(_keys_file)
+	var keys: Array = _load_json(_keys_file)
 
 	for key in keys:
 		if key.get("id") == id:
@@ -53,7 +53,7 @@ func key_exists(id: String) -> bool:
 
 
 func get_key_by_id(id: String) -> Dictionary:
-	var keys := _load_json(_keys_file)
+	var keys: Array = _load_json(_keys_file)
 
 	for key in keys:
 		if key.get("id") == id:
@@ -63,7 +63,7 @@ func get_key_by_id(id: String) -> Dictionary:
 
 
 func get_key_by_secret_hash(secret_hash: String) -> Dictionary:
-	var keys := _load_json(_keys_file)
+	var keys: Array = _load_json(_keys_file)
 
 	for key in keys:
 		if key.get("secret_hash") == secret_hash:
@@ -73,7 +73,7 @@ func get_key_by_secret_hash(secret_hash: String) -> Dictionary:
 
 
 func list_keys() -> Array:
-	var keys := _load_json(_keys_file)
+	var keys: Array = _load_json(_keys_file)
 	keys.sort_custom(func(a, b):
 		return a.get("created_at", 0) > b.get("created_at", 0)
 	)
@@ -82,7 +82,7 @@ func list_keys() -> Array:
 
 
 func delete_key(id: String) -> bool:
-	var keys := _load_json(_keys_file)
+	var keys: Array = _load_json(_keys_file)
 	var changed := false
 
 	for i in range(keys.size() - 1, -1, -1):
@@ -154,7 +154,7 @@ func list_matches(open_only := false) -> Array:
 		if not file.ends_with(".json"):
 			continue
 
-		var match_data := _load_json(_matches_path.path_join(file))
+		var match_data: Dictionary = _load_json(_matches_path.path_join(file))
 
 		if open_only and match_data.get("status") != "open":
 			continue
@@ -185,7 +185,6 @@ func delete_match(code: String) -> bool:
 
 func _match_file(code: String) -> String:
 	return _matches_path.path_join(code + ".json")
-
 
 func _load_json(path: String) -> Variant:
 	if not FileAccess.file_exists(path):

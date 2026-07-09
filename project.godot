@@ -1,16 +1,18 @@
 ; Engine configuration file.
-; Jen authoritative dedicated server — headless, no rendering.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
 [application]
 
 config/name="Jen Server"
+config/description="This is a headless Godot 4.6 application that serves as the single source of truth for online matches. Clients send player input over WebSockets, the server validates and applies that input using the shared simulation rules, drives CPU-controlled players, and streams the resulting authoritative action log back to connected clients."
+config/version="v0.0.3-alpha"
 run/main_scene="res://server/server_root.tscn"
 config/features=PackedStringArray("4.6")
-run/disable_stdout=false
 boot_splash/show_image=false
-
-[debug]
-
-settings/stdout/print_fps=false
