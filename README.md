@@ -139,7 +139,7 @@ docker buildx ls
 # Push
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/yojoecapital/$VERSION \
+  -t ghcr.io/yojoecapital/jen-server:$VERSION \
   --push .
 ```
 
