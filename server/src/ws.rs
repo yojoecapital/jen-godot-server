@@ -186,6 +186,9 @@ fn handle_text(state: &Arc<AppState>, id: u64, text: &str) {
         "action" => action(state, id, &code, seat, msg.get("action").cloned().unwrap_or(Value::Null)),
         "leave" => detach(state, id),
         "save" => state.hub.send(id, &json!({ "t": "saved", "code": code })),
+        // Client keepalive. Godot's WebSocketPeer cannot send protocol-level ping frames, so idle
+        // connections are held open with an application-level round trip instead.
+        "ping" => state.hub.send(id, &json!({ "t": "pong" })),
         _ => state.hub.send(id, &json!({ "t": "error", "message": "unknown_message" })),
     }
 }

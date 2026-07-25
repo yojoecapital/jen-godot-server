@@ -80,6 +80,17 @@ curl -H "$A" -X DELETE $S/api/matches/AB12               # admin or owner
 Give players their `id` + `secret` and the WebSocket URL (`ws://host:8081`); they enter these under
 **Settings → Online** in the game client.
 
+## Keepalive
+
+Godot's `WebSocketPeer` cannot send protocol-level ping frames, so the client holds idle connections
+open with an application-level round trip: `{"t":"ping"}` → `{"t":"pong"}`. It fires only after a
+stretch of outbound silence, so an active match never sends one.
+
+The cadence is a client-side setting deliberately kept out of the UI — `heartbeat_seconds` under
+`[net]` in the client's `settings.cfg` (default 20s, clamped to 5–300, `0` disables). Raise or lower
+it if a reverse proxy in front of the server closes idle sockets on a different schedule; e.g. nginx
+defaults `proxy_read_timeout` to 60s.
+
 ## Local development
 
 ```bash
