@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Jen Server</title>
+	<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+	<header>
+		<h1>Jen&nbsp;·&nbsp;Server</h1>
+		<div id="whoami" class="whoami hidden">
+			<span id="whoami-id"></span>
+			<span id="whoami-scopes" class="scopes"></span>
+			<button id="logout" class="ghost">Sign out</button>
+		</div>
+	</header>
+
+	<main>
+		<!-- Login -->
+		<section id="login" class="card">
+			<h2>Sign in</h2>
+			<p class="muted">Use an API key. The <code>id</code> is optional; the secret is required.</p>
+			<label>Key id <input id="login-id" type="text" autocomplete="username" placeholder="(optional)"></label>
+			<label>Secret <input id="login-secret" type="password" autocomplete="current-password" placeholder="key secret"></label>
+			<button id="login-btn">Sign in</button>
+			<p id="login-error" class="error"></p>
+		</section>
+
+		<!-- Matches -->
+		<section id="matches" class="card hidden">
+			<div class="card-head">
+				<h2>Matches</h2>
+				<button class="ghost" data-refresh="matches">Refresh</button>
+			</div>
+			<p id="matches-scope" class="muted"></p>
+			<table>
+				<thead><tr><th>Code</th><th>Owner</th><th>Seats</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+				<tbody id="matches-body"></tbody>
+			</table>
+			<p id="matches-empty" class="muted hidden">No matches.</p>
+		</section>
+
+		<!-- Clients (admin only) -->
+		<section id="clients" class="card hidden">
+			<div class="card-head">
+				<h2>Client keys</h2>
+				<button class="ghost" data-refresh="clients">Refresh</button>
+			</div>
+
+			<form id="create-key" class="create-key">
+				<label>New key id <input id="key-id" type="text" placeholder="e.g. alice"></label>
+				<fieldset>
+					<legend>Scopes</legend>
+					<label class="inline"><input type="checkbox" value="host_match" checked> host_match</label>
+					<label class="inline"><input type="checkbox" value="join_match" checked> join_match</label>
+					<label class="inline"><input type="checkbox" value="admin"> admin</label>
+				</fieldset>
+				<button type="submit">Create key</button>
+			</form>
+			<div id="new-secret" class="new-secret hidden">
+				<strong>Copy this secret now — it is shown only once:</strong>
+				<code id="new-secret-value"></code>
+			</div>
+
+			<table>
+				<thead><tr><th>Id</th><th>Scopes</th><th>Created</th><th></th></tr></thead>
+				<tbody id="clients-body"></tbody>
+			</table>
+		</section>
+	</main>
+
+	<script src="/app.js"></script>
+</body>
+</html>

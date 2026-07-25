@@ -1,6 +1,6 @@
 .git
-.godot
-build
+target
 *.log
-*.md
-selftest.db*
+*.db
+*.db-wal
+*.db-shm

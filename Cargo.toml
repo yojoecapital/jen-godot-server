@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = ["core", "server"]
+
+# `core/` is a git submodule (jen-godot-simulation @ rust-core) holding the shared `jen_core` crate.
+# `git submodule update --init --recursive` before building.

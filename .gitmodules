@@ -1,3 +1,4 @@
-[submodule "simulation"]
-	path = simulation
+[submodule "core"]
+	path = core
 	url = git@github.com:yojoecapital/jen-godot-simulation.git
+	branch = rust-core

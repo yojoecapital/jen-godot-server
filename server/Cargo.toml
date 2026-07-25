@@ -1,0 +1,22 @@
+[package]
+name = "jen-server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "jen-server"
+path = "src/main.rs"
+
+[dependencies]
+# The shared rules engine, mounted as the `core/` submodule (jen-godot-simulation @ rust-core). The
+# client builds the same crate, which is what keeps replay in lockstep.
+jen_core = { path = "../core" }
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal", "net"] }
+axum = { version = "0.7", features = ["ws"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+rand = "0.8"
+futures-util = "0.3"

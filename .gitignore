@@ -1,5 +1,6 @@
-.godot/
-/build/
+/target
+*.db
+*.db-wal
+*.db-shm
 *.tmp
 *.log
-selftest.db*
