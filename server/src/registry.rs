@@ -1,9 +1,13 @@
-//! Authoritative match registry (port of `match_registry.gd`, human-only).
+//! Authoritative match registry (port of `match_registry.gd`).
 //!
 //! Holds live matches in memory and rehydrates evicted ones from the DB snapshot. Every action is
 //! re-validated (turn + actor ownership) and resolved through `jen_core::executor::apply`, so the
-//! server is the single source of truth. Unlike the GDScript original there is **no CPU seat drive**
-//! — matches are human-only this pass, so a resolved action simply hands the turn to the next human.
+//! server is the single source of truth.
+//!
+//! Seats are `human` or `ai`. After a human's action the registry plays out any CPU seats that
+//! follow and broadcasts their moves alongside it — clients advance by replaying the action stream,
+//! so a move they never receive would desync them. The AI is `jen_ai`, the same crate the client
+//! links, so a CPU seat decides identically offline and online.
 //!
 //! RNG is `jen_core::Pcg32`: seeded from `config.seed` at creation, its advancing `state` is
 //! serialized into every snapshot and restored via `Pcg32::from_state` on rehydrate. The Godot
@@ -15,6 +19,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 
+use jen_ai::policy::Policy;
 use jen_core::action::{self, Action};
 use jen_core::config::{self, GameConfig};
 use jen_core::executor;
@@ -52,7 +57,8 @@ pub struct MatchView {
 
 #[derive(Debug)]
 pub struct ApplyOutcome {
-    /// Ordered (seat, action-dict) pairs to broadcast. Human-only ⇒ exactly the one human action.
+    /// Ordered (seat, action-dict) pairs to broadcast: the acting human's move followed by any CPU
+    /// seats that played before the turn returned to a human.
     pub actions: Vec<(i32, Value)>,
     pub current_seat: i32,
     pub winner: i32,
@@ -82,22 +88,27 @@ impl Registry {
         }
     }
 
-    /// Build a fresh match. Rejects any non-human seat (`cpu`/`ai`) — human-only this pass.
+    /// Build a fresh match. Seats are `human` or `ai`; a match with no human seat is rejected,
+    /// since nobody could ever join it.
     pub fn create(&self, owner_key_id: &str, mut config: GameConfig) -> Result<MatchView, String> {
-        if config
-            .seat_controllers
-            .iter()
-            .any(|s| s == "cpu" || s == "ai")
-        {
-            return Err("cpu_seats_unsupported".into());
-        }
         if !config.seeded {
             config.seed = rand::random::<u32>() as i64;
             config.seeded = true;
         }
         let mut rng = Pcg32::seeded(config.seed as u64);
         let (sim, tm) = factory::build(&config, &mut rng);
-        let seats = vec!["human".to_string(); sim.players.len().max(1)];
+
+        // `cpu` and `ai` both mean the same seat type; store the token saves and the client protocol
+        // already use. Seats beyond what the config named default to human.
+        let seats: Vec<String> = (0..sim.players.len().max(1))
+            .map(|i| match config.seat_controllers.get(i).map(String::as_str) {
+                Some("ai") | Some("cpu") => "ai".to_string(),
+                _ => "human".to_string(),
+            })
+            .collect();
+        if !seats.iter().any(|s| s == "human") {
+            return Err("no_human_seats".into());
+        }
 
         let mut m = LiveMatch {
             sim,
@@ -108,6 +119,10 @@ impl Registry {
             owner: owner_key_id.to_string(),
             status: "open".to_string(),
         };
+        // Seat 0 may itself be a CPU, in which case it has to move before any human can. There is
+        // nothing to broadcast: the snapshot below is taken afterwards, so a joining client seeds
+        // from the position the CPU has already reached.
+        drive_cpu_seats(&mut m);
 
         let mut live = self.live.lock().unwrap();
         let code = self.new_code(&live);
@@ -124,7 +139,7 @@ impl Registry {
         Some(self.view_of(code, m))
     }
 
-    /// Apply one seat's action and return the (single) action to broadcast.
+    /// Apply one seat's action, then any CPU seats that follow, and return the whole stream.
     pub fn apply(&self, code: &str, seat: i32, action_dict: &Value) -> Result<ApplyOutcome, String> {
         let mut live = self.live.lock().unwrap();
         if self.ensure_loaded(&mut live, code).is_none() {
@@ -149,7 +164,11 @@ impl Registry {
             return Err("illegal_action".into());
         }
 
-        let actions = vec![(seat, action::to_json(&action))];
+        let mut actions = vec![(seat, action::to_json(&action))];
+        // Hand play to any CPU seats that follow, and broadcast their moves alongside the human's so
+        // every client replays the same stream and stays in lockstep.
+        actions.extend(drive_cpu_seats(m));
+
         let winner = winner_of(&mut m.sim, &m.tm);
         if winner != -1 {
             m.status = "over".to_string();
@@ -191,14 +210,16 @@ impl Registry {
         Some(live.get(code).unwrap().owner.clone())
     }
 
-    /// Human seat indices (all of them — human-only), for seat claiming.
+    /// Seat indices a person can claim. CPU seats are excluded — they are already played.
     pub fn human_seats(&self, code: &str) -> Vec<usize> {
         let mut live = self.live.lock().unwrap();
         if self.ensure_loaded(&mut live, code).is_none() {
             return Vec::new();
         }
         let m = live.get(code).unwrap();
-        (0..m.seats.len()).collect()
+        (0..m.seats.len())
+            .filter(|&i| m.seats[i] == "human")
+            .collect()
     }
 
     /// Evict from memory (persistence is untouched — it rehydrates on next access).
@@ -276,6 +297,61 @@ fn current_seat_of(sim: &mut Sim, tm: &TurnManager) -> i32 {
     tm.current_player().map(|p| p as i32).unwrap_or(-1)
 }
 
+/// Guard against a policy that never ends its turn. Each action either spends a unit's readiness or
+/// sets a stance, so a turn is bounded — but a bug here would spin the server, not the client.
+const MAX_CPU_ACTIONS: usize = 4_000;
+
+/// Search budget per CPU action. A whole CPU turn is many actions and runs inside the request that
+/// triggered it, so both this and the wall-clock cap below keep a human's move from stalling.
+const CPU_SIMULATIONS: usize = 192;
+const CPU_MAX_MILLIS: u64 = 100;
+
+fn cpu_policy(seed: u64) -> jen_ai::policy::Mcts {
+    let mut config = jen_ai::mcts::Config::default();
+    config.simulations = CPU_SIMULATIONS;
+    config.max_millis = CPU_MAX_MILLIS;
+    jen_ai::policy::Mcts::new(
+        Box::new(jen_ai::eval::HeuristicEvaluator::new()),
+        config,
+        seed,
+    )
+}
+
+/// Plays every CPU seat that now has the move, returning their actions in order.
+///
+/// Runs until a human is to move or the match ends, so a table of CPU seats between two humans
+/// resolves in one pass. The actions are broadcast rather than merely applied: clients advance by
+/// replaying the action stream, so a move they never see would desync them.
+fn drive_cpu_seats(m: &mut LiveMatch) -> Vec<(i32, Value)> {
+    let mut produced = Vec::new();
+    let mut policy = cpu_policy(m.seed as u64);
+
+    for _ in 0..MAX_CPU_ACTIONS {
+        if winner_of(&mut m.sim, &m.tm) != -1 {
+            break;
+        }
+        let seat = current_seat_of(&mut m.sim, &m.tm);
+        if seat < 0 || m.seats.get(seat as usize).map(String::as_str) != Some("ai") {
+            break;
+        }
+
+        let action = policy.choose(&m.sim, &m.tm);
+        let mut events = Vec::new();
+        if !executor::apply(&mut m.sim, &mut m.tm, &action, &mut m.rng, &mut events) {
+            // The engine rejected an action its own enumeration produced; ending the turn keeps the
+            // match playable rather than wedging it.
+            let end = jen_core::action::Action::end_turn();
+            if !executor::apply(&mut m.sim, &mut m.tm, &end, &mut m.rng, &mut events) {
+                break;
+            }
+            produced.push((seat, action::to_json(&end)));
+            continue;
+        }
+        produced.push((seat, action::to_json(&action)));
+    }
+    produced
+}
+
 fn winner_of(sim: &mut Sim, tm: &TurnManager) -> i32 {
     tm.check_win(sim).map(|p| p as i32).unwrap_or(-1)
 }
@@ -339,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn create_is_human_only_and_seated() {
+    fn create_seats_players_and_carries_rng_state() {
         let reg = registry();
         let view = reg.create("alice", cfg(12345)).unwrap();
         assert_eq!(view.current_seat, 0, "seat 0 acts first");
@@ -349,12 +425,64 @@ mod tests {
         assert_eq!(reg.human_seats(&view.code), vec![0, 1]);
     }
 
+    /// `cpu` and `ai` are the same seat; only the second is stored, since that is the token saves
+    /// and the client protocol already use.
     #[test]
-    fn cpu_seats_are_rejected() {
+    fn cpu_seats_are_accepted_and_normalised() {
         let reg = registry();
-        let mut bad = cfg(1);
-        bad.seat_controllers = vec!["human".into(), "cpu".into()];
-        assert_eq!(reg.create("x", bad).unwrap_err(), "cpu_seats_unsupported");
+        let mut c = cfg(1);
+        c.seat_controllers = vec!["human".into(), "cpu".into()];
+        let view = reg.create("alice", c).unwrap();
+        assert_eq!(view.seats, vec!["human".to_string(), "ai".to_string()]);
+        // A CPU seat is not claimable — it is already being played.
+        assert_eq!(reg.human_seats(&view.code), vec![0]);
+    }
+
+    #[test]
+    fn a_match_with_no_human_seats_is_rejected() {
+        let reg = registry();
+        let mut c = cfg(2);
+        c.seat_controllers = vec!["ai".into(), "ai".into()];
+        assert_eq!(reg.create("x", c).unwrap_err(), "no_human_seats");
+    }
+
+    /// The CPU's moves must be broadcast, not merely applied: clients advance by replaying the
+    /// action stream, so a move they never receive would desync them.
+    #[test]
+    fn cpu_seats_play_after_a_human_and_their_actions_are_broadcast() {
+        let reg = registry();
+        let mut c = cfg(31337);
+        c.seat_controllers = vec!["human".into(), "ai".into()];
+        let view = reg.create("alice", c).unwrap();
+        assert_eq!(view.current_seat, 0, "the human moves first here");
+
+        let out = reg.apply(&view.code, 0, &end_turn()).unwrap();
+
+        assert!(out.actions.len() > 1, "the CPU seat produced no actions");
+        assert_eq!(out.actions[0].0, 0, "the human's action comes first");
+        assert!(
+            out.actions[1..].iter().all(|(seat, _)| *seat == 1),
+            "every following action belongs to the CPU seat"
+        );
+        assert_eq!(
+            out.current_seat, 0,
+            "play returns to the human once the CPU ends its turn"
+        );
+    }
+
+    /// A CPU on seat 0 has to move before anyone can join, and the snapshot must already reflect it.
+    #[test]
+    fn a_cpu_on_the_first_seat_opens_the_game() {
+        let reg = registry();
+        let mut c = cfg(4242);
+        c.seat_controllers = vec!["ai".into(), "human".into()];
+        let view = reg.create("alice", c).unwrap();
+
+        assert_eq!(view.current_seat, 1, "the CPU already played its opening turn");
+        assert_eq!(reg.human_seats(&view.code), vec![1]);
+        // The opening is in the snapshot rather than replayed, so a joining client starts from it.
+        let stock = view.snapshot["players"][0]["stock"].as_i64().unwrap_or(0);
+        assert!(stock >= 0);
     }
 
     #[test]

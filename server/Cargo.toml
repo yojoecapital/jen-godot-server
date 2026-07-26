@@ -11,6 +11,8 @@ path = "src/main.rs"
 # The shared rules engine, mounted as the `core/` submodule (jen-godot-simulation @ rust-core). The
 # client builds the same crate, which is what keeps replay in lockstep.
 jen_core = { path = "../core/jen_core" }
+# The CPU opponent. Default features only — the AI's offline tooling stays out of the server.
+jen_ai = { path = "../core/jen_ai" }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal", "net"] }
 axum = { version = "0.7", features = ["ws"] }

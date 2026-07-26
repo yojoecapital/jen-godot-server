@@ -9,9 +9,11 @@ as the `core/` submodule), then broadcasts the authoritative action stream back 
 Both sides run the same `jen_core::Pcg32` RNG, so combat replays deterministically from a shared
 `rng_state` — the client never recomputes an outcome. Persistence is **SQLite**.
 
-> **Matches are human-only in this build.** The server still rejects `cpu`/`ai` seats
-> (`{"t":"error","message":"cpu_seats_unsupported"}`). The opponent itself now exists — `core/jen_ai`
-> carries the heuristic and a PUCT search — but it is not yet wired into the match registry.
+**CPU seats are supported.** Pass `"ai"` (or `"cpu"`) in `seat_controllers` when creating a match and
+the server plays that seat itself with `core/jen_ai` — the same crate the client links, so a CPU
+opponent decides identically offline and online. After a human's action the server plays out any CPU
+seats that follow and broadcasts their moves alongside it, because clients advance by replaying the
+action stream. A table with no human seat is refused (`no_human_seats`): nobody could join it.
 
 ## Project layout
 
@@ -26,7 +28,7 @@ server/
     main.rs                # env, open DB, seed admin key, spawn REST+UI (8080) and WS (8081)
     db.rs                  # SQLite (rusqlite, bundled): api_keys + matches
     auth.rs                # secret gen / SHA-256 hash / scopes
-    registry.rs            # authoritative match logic (human-only) over jen_core
+    registry.rs            # authoritative match logic + CPU seat drive, over jen_core/jen_ai
     rest.rs                # /api/* (bearer = API key) + embedded UI
     ws.rs                  # WebSocket gameplay gateway (net_client.gd protocol)
     ui/                    # index.html / app.js / style.css (embedded via include_str!)
@@ -100,7 +102,7 @@ defaults `proxy_read_timeout` to 60s.
 git submodule update --init --recursive
 
 # Tests. The workspace run covers all three crates: the server (SQLite CRUD, auth scopes,
-# human-only rejection, turn/actor validation, deterministic replay, rehydrate), plus the shared
+# CPU seat drive, turn/actor validation, deterministic replay, rehydrate), plus the shared
 # rules engine and the AI. Use --release: the AI's search tests are far slower unoptimised.
 cargo test --release
 
