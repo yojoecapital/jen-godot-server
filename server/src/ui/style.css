@@ -33,6 +33,11 @@ body {
 	background: var(--page);
 	color: var(--page-fg);
 	font: 15px/1.55 var(--mono);
+	/* Keeps the footer at the bottom of short pages without taking it out of flow, so it can never
+	   overlap the content the way a fixed footer would. */
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
 }
 
 /* ---- header ---- */
@@ -47,9 +52,19 @@ header {
 	flex-wrap: wrap;
 }
 
+.brand { display: flex; align-items: center; gap: .7rem; }
+.brand-icon { display: block; border-radius: 8px; }
+
+/* "JEN" sits above "server", so the wordmark reads as one block beside the icon. */
 h1 {
 	margin: 0;
-	font-size: 1.4rem;
+	display: flex;
+	flex-direction: column;
+	line-height: 1.05;
+}
+
+h1 .word {
+	font-size: 1.25rem;
 	font-weight: 700;
 	letter-spacing: .14em;
 	color: #a8a8a8;
@@ -57,38 +72,80 @@ h1 {
 
 h1 .sub {
 	font-weight: 400;
-	font-size: .8rem;
-	letter-spacing: .04em;
+	font-size: .72rem;
+	letter-spacing: .16em;
 	color: var(--muted);
-	margin-left: .6rem;
 }
 
-.whoami {
-	display: flex;
-	align-items: center;
-	gap: .9rem;
-	font-size: .9rem;
-	flex-wrap: wrap;
-}
+.whoami { display: flex; align-items: center; gap: .9rem; }
 
-.whoami .who-id { color: var(--page-fg); }
-
-/* Scopes read as a plain comma-separated list, in monospace, in both places they appear. */
+/* Scopes read as a plain comma-separated list, in monospace, wherever they appear. */
 .scopes {
 	font-family: var(--mono);
-	color: var(--muted);
 	letter-spacing: .01em;
 }
+
+/* ---- account menu ---- */
+
+.menu { position: relative; }
+
+.icon-btn {
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 38px;
+	padding: 0;
+	border-radius: var(--radius-pill);
+	background: transparent;
+	color: var(--muted);
+	border: 1px solid var(--page-line);
+}
+.icon-btn:hover { background: #1e1e1e; color: var(--page-fg); }
+.icon-btn[aria-expanded="true"] { background: #1e1e1e; color: var(--page-fg); }
+
+.menu-panel {
+	position: absolute;
+	top: calc(100% + .55rem);
+	right: 0;
+	z-index: 20;
+	min-width: 15rem;
+	max-width: min(22rem, 90vw);
+	padding: .9rem 1rem 1rem;
+	background: var(--panel);
+	color: var(--ink);
+	border-radius: var(--radius);
+	box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+
+.menu-label {
+	margin: 0 0 .15rem;
+	font-size: .72rem;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+.menu-value { margin: 0 0 .8rem; word-break: break-word; }
+.menu-action { width: 100%; margin-top: .2rem; }
+.menu-panel .menu-action { color: var(--danger); }
+.menu-panel .menu-action:hover { background: rgba(199, 56, 56, .1); }
 
 /* ---- layout ---- */
 
 main {
+	width: 100%;
 	max-width: 900px;
 	margin: 0 auto;
 	padding: 1.5rem;
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
+	flex: 1;
+}
+
+footer {
+	padding: 1rem 1.5rem;
+	font-size: .8rem;
+	color: var(--muted);
 }
 
 .card {

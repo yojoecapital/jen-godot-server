@@ -194,6 +194,39 @@ fn handle_text(state: &Arc<AppState>, id: u64, text: &str) {
 }
 
 fn authenticate(state: &Arc<AppState>, id: u64, msg: &Value) {
+    // Versions are checked before credentials. Online play is deterministic action-replay — the
+    // client re-resolves the server's actions through its own copy of the rules — so a mismatched
+    // build desyncs silently instead of failing, which is far worse to diagnose than a refusal.
+    let client_version = msg.get("version").and_then(Value::as_str).unwrap_or("");
+    if !crate::version::is_compatible(client_version) {
+        let shown = if client_version.is_empty() {
+            "unknown"
+        } else {
+            client_version
+        };
+        state.hub.send(
+            id,
+            &json!({
+                "t": "error",
+                "message": format!(
+                    "version_mismatch: server is {}, client is {}",
+                    crate::version::VERSION,
+                    shown
+                ),
+            }),
+        );
+        state.hub.send(
+            id,
+            &json!({
+                "t": "hello",
+                "ok": false,
+                "reason": "version_mismatch",
+                "version": crate::version::VERSION,
+            }),
+        );
+        return;
+    }
+
     let key = msg.get("key").and_then(Value::as_str).unwrap_or("");
     let want_id = msg.get("id").and_then(Value::as_str).unwrap_or("");
     let row = state.db.get_key_by_secret_hash(&auth::hash_secret(key));
@@ -214,9 +247,16 @@ fn authenticate(state: &Arc<AppState>, id: u64, msg: &Value) {
             s.scopes = k.scopes.clone();
         }
     }
-    state
-        .hub
-        .send(id, &json!({ "t": "hello", "ok": true, "scopes": k.scopes, "id": k.id }));
+    state.hub.send(
+        id,
+        &json!({
+            "t": "hello",
+            "ok": true,
+            "scopes": k.scopes,
+            "id": k.id,
+            "version": crate::version::VERSION,
+        }),
+    );
 }
 
 fn create_match(state: &Arc<AppState>, id: u64, scopes: &[String], key_id: &str, msg: &Value) {

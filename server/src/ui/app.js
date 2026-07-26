@@ -48,8 +48,8 @@ async function refreshMe() {
 function showSignedIn() {
 	$("login").classList.add("hidden");
 	$("whoami").classList.remove("hidden");
-	$("whoami-id").textContent = me.id;
-	$("whoami-scopes").textContent = scopeList(me.scopes);
+	$("menu-id").textContent = me.id;
+	$("menu-scopes").textContent = scopeList(me.scopes);
 	$("matches").classList.remove("hidden");
 	$("matches-scope").textContent = isAdmin()
 		? "Showing every match on the server."
@@ -66,6 +66,7 @@ function showSignedIn() {
 function showSignedOut() {
 	me = null;
 	localStorage.removeItem(KEY);
+	closeUserMenu();
 	$("whoami").classList.add("hidden");
 	$("matches").classList.add("hidden");
 	$("clients").classList.add("hidden");
@@ -147,6 +148,35 @@ async function createKey(ev) {
 	loadClients();
 }
 
+// ---- account menu ----
+
+function userMenuOpen() {
+	return !$("user-menu").classList.contains("hidden");
+}
+
+function openUserMenu() {
+	$("user-menu").classList.remove("hidden");
+	$("user-btn").setAttribute("aria-expanded", "true");
+}
+
+function closeUserMenu() {
+	$("user-menu").classList.add("hidden");
+	$("user-btn").setAttribute("aria-expanded", "false");
+}
+
+function toggleUserMenu(ev) {
+	ev.stopPropagation();
+	if (userMenuOpen()) closeUserMenu(); else openUserMenu();
+}
+
+// ---- version ----
+
+async function loadVersion() {
+	const r = await api("GET", "/api/version");
+	const v = (r.ok && r.data && r.data.version) || "";
+	$("version").textContent = v ? "v" + String(v).replace(/^v/, "") : "";
+}
+
 // ---- helpers ----
 
 function cell(text, cls) {
@@ -177,7 +207,14 @@ document.querySelectorAll("[data-refresh]").forEach((b) => {
 	b.addEventListener("click", () => (b.dataset.refresh === "clients" ? loadClients() : loadMatches()));
 });
 
+$("user-btn").addEventListener("click", toggleUserMenu);
+// Clicking inside the panel should not dismiss it; anywhere else, or Escape, should.
+$("user-menu").addEventListener("click", (e) => e.stopPropagation());
+document.addEventListener("click", () => { if (userMenuOpen()) closeUserMenu(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && userMenuOpen()) closeUserMenu(); });
+
 (async function boot() {
+	loadVersion();
 	if (secret() && await refreshMe()) {
 		showSignedIn();
 	} else {

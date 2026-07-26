@@ -8,11 +8,31 @@
 </head>
 <body>
 	<header>
-		<h1>JEN<span class="sub">server</span></h1>
+		<div class="brand">
+			<img class="brand-icon" src="/icon.svg" alt="" width="36" height="36">
+			<h1><span class="word">JEN</span><span class="sub">server</span></h1>
+		</div>
+
 		<div id="whoami" class="whoami hidden">
-			<span id="whoami-id" class="who-id mono"></span>
-			<span id="whoami-scopes" class="scopes"></span>
-			<button id="logout" class="ghost">Sign out</button>
+			<div class="menu">
+				<button id="user-btn" class="icon-btn" aria-haspopup="true" aria-expanded="false"
+					aria-controls="user-menu" title="Signed-in key">
+					<!-- Inline so the navbar needs no second request, and inherits currentColor. -->
+					<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+						<circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+						<path d="M4.8 20c0-3.6 3.2-5.8 7.2-5.8s7.2 2.2 7.2 5.8" fill="none"
+							stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+					</svg>
+				</button>
+
+				<div id="user-menu" class="menu-panel hidden" role="menu">
+					<p class="menu-label">Signed in as</p>
+					<p id="menu-id" class="mono menu-value"></p>
+					<p class="menu-label">Scopes</p>
+					<p id="menu-scopes" class="mono menu-value scopes"></p>
+					<button id="logout" class="ghost menu-action">Sign out</button>
+				</div>
+			</div>
 		</div>
 	</header>
 
@@ -73,6 +93,10 @@
 			</div>
 		</section>
 	</main>
+
+	<footer>
+		<span id="version" class="mono muted"></span>
+	</footer>
 
 	<script src="/app.js"></script>
 </body>

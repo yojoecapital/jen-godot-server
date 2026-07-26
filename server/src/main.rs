@@ -8,6 +8,7 @@ mod auth;
 mod db;
 mod registry;
 mod rest;
+mod version;
 mod ws;
 
 use std::net::SocketAddr;

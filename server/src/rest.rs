@@ -23,6 +23,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/", get(index))
         .route("/app.js", get(app_js))
         .route("/style.css", get(style_css))
+        .route("/icon.svg", get(icon_svg))
+        // Unauthenticated: the sign-in page shows it, and a client that cannot connect because of a
+        // version mismatch needs to be able to read what the server expects.
+        .route("/api/version", get(version))
         .route("/api/me", get(me))
         .route("/api/keys", post(create_key).get(list_keys))
         .route("/api/keys/:id", delete(delete_key))
@@ -195,4 +199,17 @@ async fn style_css() -> Response {
         include_str!("ui/style.css"),
     )
         .into_response()
+}
+
+/// The game's own icon, copied from `jen-godot/icon.svg`.
+async fn icon_svg() -> Response {
+    (
+        [(header::CONTENT_TYPE, "image/svg+xml")],
+        include_str!("ui/icon.svg"),
+    )
+        .into_response()
+}
+
+async fn version() -> Json<Value> {
+    Json(json!({ "version": crate::version::VERSION }))
 }
