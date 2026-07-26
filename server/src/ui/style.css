@@ -10,7 +10,8 @@
 	--panel: #f7f7f9;         /* 0.968, 0.968, 0.976 */
 	--surface: #e8e8ea;       /* 0.91, 0.91, 0.917  — buttons, inputs */
 	--surface-hi: #ffffff;
-	--surface-lo: #d9d9db;    /* 0.852, 0.852, 0.859 — pressed */
+	--surface-lo: #d9d9db;    /* 0.852, 0.852, 0.859 — hover */
+	--surface-press: #cbcbce; /* a shade below --surface-lo, so pressed still reads as a change */
 	--line: #e0e0e6;          /* 0.88, 0.88, 0.9 */
 
 	--ink: #24242b;           /* 0.14, 0.14, 0.17 */
@@ -125,8 +126,21 @@ h1 .sub {
 	color: var(--muted);
 }
 .menu-value { margin: 0 0 .8rem; word-break: break-word; }
-.menu-action { width: 100%; margin-top: .2rem; }
-.menu-panel .menu-action { color: var(--danger); }
+/* Full width, and back to normal sizing — `.danger` is otherwise sized for table rows. */
+.menu-action {
+	width: 100%;
+	margin-top: .2rem;
+	padding: .55rem 1.1rem;
+	font-size: 1rem;
+}
+
+/* Signing out is destructive, so it reads red in every state. It is marked `.danger` rather than
+   `.ghost` for that reason: a ghost button inside the header turns light on hover, which would
+   repaint this one on the way past. */
+.menu-panel .menu-action,
+.menu-panel .menu-action:hover {
+	color: var(--danger);
+}
 .menu-panel .menu-action:hover { background: rgba(199, 56, 56, .1); }
 
 /* ---- layout ---- */
@@ -211,15 +225,19 @@ button {
 	font: inherit;
 	cursor: pointer;
 }
-button:hover { background: var(--surface-hi); }
-button:active { background: var(--surface-lo); }
+/* Hover darkens rather than lightens: against a light panel, going to white reads as the button
+   fading out instead of responding. */
+button:hover { background: var(--surface-lo); }
+button:active { background: var(--surface-press); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Flat variants, mirroring the game's FlatButton / DangerFlatButton. */
 button.ghost { background: transparent; color: var(--muted); }
 button.ghost:hover { background: var(--surface); color: var(--ink); }
 button.danger { background: transparent; color: var(--danger); padding: .35rem .75rem; font-size: .85rem; }
-button.danger:hover { background: rgba(199, 56, 56, .1); }
+/* Colour is restated on hover so a destructive button can never be repainted by a more specific
+   rule elsewhere — which is exactly what happened to Sign out while it was a ghost button. */
+button.danger:hover { background: rgba(199, 56, 56, .1); color: var(--danger); }
 
 /* The header sits on the dark page, so its buttons invert. */
 header button.ghost { color: var(--muted); }
