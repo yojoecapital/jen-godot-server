@@ -1,28 +1,22 @@
-/* Follows the game's own look: near-black page, light filled panels, no hairline borders, and
-   generous 14px corners. Values are lifted from presentation/ui/jen_theme.tres so the two stay in
-   step — the comments give the Godot Color they came from. */
-
 :root {
-	--page: #121212;          /* menu env 0.1112 under a 0.35 black scrim */
+	--page: #121212;
 	--page-fg: #e8e8ea;
 	--page-line: #2a2a2a;
 
-	--panel: #f7f7f9;         /* 0.968, 0.968, 0.976 */
-	--surface: #e8e8ea;       /* 0.91, 0.91, 0.917  — buttons, inputs */
+	--panel: #f7f7f9;
+	--surface: #e8e8ea;
 	--surface-hi: #ffffff;
-	--surface-lo: #d9d9db;    /* 0.852, 0.852, 0.859 — hover */
-	--surface-press: #cbcbce; /* a shade below --surface-lo, so pressed still reads as a change */
-	--line: #e0e0e6;          /* 0.88, 0.88, 0.9 */
+	--surface-lo: #d9d9db;
+	--surface-press: #cbcbce;
+	--line: #e0e0e6;
 
-	--ink: #24242b;           /* 0.14, 0.14, 0.17 */
-	--muted: #737380;         /* 0.45, 0.45, 0.5 */
-	--danger: #c73838;        /* 0.78, 0.22, 0.22 */
+	--ink: #24242b;
+	--muted: #737380;
+	--danger: #c73838;
 
 	--radius: 14px;
 	--radius-pill: 29px;
 
-	/* The game ships Fantasque Sans Mono and uses it for everything; fall back through common
-	   monospace faces so the UI still reads correctly without it installed. */
 	--mono: "Fantasque Sans Mono", "JetBrains Mono", "Fira Code", "DejaVu Sans Mono",
 		ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -34,14 +28,10 @@ body {
 	background: var(--page);
 	color: var(--page-fg);
 	font: 15px/1.55 var(--mono);
-	/* Keeps the footer at the bottom of short pages without taking it out of flow, so it can never
-	   overlap the content the way a fixed footer would. */
 	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
 }
-
-/* ---- header ---- */
 
 header {
 	display: flex;
@@ -56,7 +46,6 @@ header {
 .brand { display: flex; align-items: center; gap: .7rem; }
 .brand-icon { display: block; border-radius: 8px; }
 
-/* "JEN" sits above "server", so the wordmark reads as one block beside the icon. */
 h1 {
 	margin: 0;
 	display: flex;
@@ -80,13 +69,10 @@ h1 .sub {
 
 .whoami { display: flex; align-items: center; gap: .9rem; }
 
-/* Scopes read as a plain comma-separated list, in monospace, wherever they appear. */
 .scopes {
 	font-family: var(--mono);
 	letter-spacing: .01em;
 }
-
-/* ---- account menu ---- */
 
 .menu { position: relative; }
 
@@ -126,7 +112,7 @@ h1 .sub {
 	color: var(--muted);
 }
 .menu-value { margin: 0 0 .8rem; word-break: break-word; }
-/* Full width, and back to normal sizing — `.danger` is otherwise sized for table rows. */
+
 .menu-action {
 	width: 100%;
 	margin-top: .2rem;
@@ -134,16 +120,11 @@ h1 .sub {
 	font-size: 1rem;
 }
 
-/* Signing out is destructive, so it reads red in every state. It is marked `.danger` rather than
-   `.ghost` for that reason: a ghost button inside the header turns light on hover, which would
-   repaint this one on the way past. */
 .menu-panel .menu-action,
 .menu-panel .menu-action:hover {
 	color: var(--danger);
 }
 .menu-panel .menu-action:hover { background: rgba(199, 56, 56, .1); }
-
-/* ---- layout ---- */
 
 main {
 	width: 100%;
@@ -170,7 +151,6 @@ footer {
 	padding: 1.35rem 1.4rem;
 }
 
-/* The sign-in panel is a compact modal like the game's, rather than a full-width sheet. */
 #login {
 	width: 100%;
 	max-width: 460px;
@@ -192,8 +172,6 @@ h2 { font-size: 1.05rem; margin: 0 0 .6rem; font-weight: 700; }
 .error { color: var(--danger); min-height: 1.2em; }
 .hidden { display: none !important; }
 .mono, code { font-family: var(--mono); }
-
-/* ---- form controls ---- */
 
 label { display: block; margin: .6rem 0; }
 label.inline { display: inline-flex; align-items: center; gap: .4rem; margin-right: 1.1rem; }
@@ -225,28 +203,20 @@ button {
 	font: inherit;
 	cursor: pointer;
 }
-/* Hover darkens rather than lightens: against a light panel, going to white reads as the button
-   fading out instead of responding. */
 button:hover { background: var(--surface-lo); }
 button:active { background: var(--surface-press); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 
-/* Flat variants, mirroring the game's FlatButton / DangerFlatButton. */
 button.ghost { background: transparent; color: var(--muted); }
 button.ghost:hover { background: var(--surface); color: var(--ink); }
 button.danger { background: transparent; color: var(--danger); padding: .35rem .75rem; font-size: .85rem; }
-/* Colour is restated on hover so a destructive button can never be repainted by a more specific
-   rule elsewhere — which is exactly what happened to Sign out while it was a ghost button. */
 button.danger:hover { background: rgba(199, 56, 56, .1); color: var(--danger); }
 
-/* The header sits on the dark page, so its buttons invert. */
 header button.ghost { color: var(--muted); }
 header button.ghost:hover { background: #1e1e1e; color: var(--page-fg); }
 
 fieldset { border: 1px solid var(--line); border-radius: var(--radius); margin: .7rem 0; padding: .6rem .9rem .8rem; }
 legend { color: var(--muted); padding: 0 .4rem; font-size: .85rem; }
-
-/* ---- tables ---- */
 
 .table-wrap { overflow-x: auto; }
 
@@ -255,8 +225,6 @@ th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--
 th { color: var(--muted); font-weight: 400; }
 tr:last-child td { border-bottom: 0; }
 td.mono { font-family: var(--mono); }
-
-/* ---- one-off panels ---- */
 
 .create-key { border-bottom: 1px solid var(--line); padding-bottom: 1.1rem; margin-bottom: .4rem; }
 
