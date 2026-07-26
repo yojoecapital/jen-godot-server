@@ -10,7 +10,7 @@ path = "src/main.rs"
 [dependencies]
 # The shared rules engine, mounted as the `core/` submodule (jen-godot-simulation @ rust-core). The
 # client builds the same crate, which is what keeps replay in lockstep.
-jen_core = { path = "../core" }
+jen_core = { path = "../core/jen_core" }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal", "net"] }
 axum = { version = "0.7", features = ["ws"] }

@@ -9,14 +9,17 @@ as the `core/` submodule), then broadcasts the authoritative action stream back 
 Both sides run the same `jen_core::Pcg32` RNG, so combat replays deterministically from a shared
 `rng_state` — the client never recomputes an outcome. Persistence is **SQLite**.
 
-> **Matches are human-only in this build.** The Rust core carries no AI, so the server rejects
-> `cpu`/`ai` seats (`{"t":"error","message":"cpu_seats_unsupported"}`). CPU opponents are a follow-up.
+> **Matches are human-only in this build.** The server still rejects `cpu`/`ai` seats
+> (`{"t":"error","message":"cpu_seats_unsupported"}`). The opponent itself now exists — `core/jen_ai`
+> carries the heuristic and a PUCT search — but it is not yet wired into the match registry.
 
 ## Project layout
 
 ```text
-Cargo.toml                 # workspace: members = ["core", "server"]
-core/                      # submodule -> jen-godot-simulation @ rust-core (the jen_core crate)
+Cargo.toml                 # workspace: members = ["core/jen_core", "core/jen_ai", "server"]
+core/                      # submodule -> jen-godot-simulation @ rust-core
+  jen_core/                #   the shared rules engine
+  jen_ai/                  #   search + policies (the CPU opponent)
 server/
   Cargo.toml
   src/
@@ -96,9 +99,10 @@ defaults `proxy_read_timeout` to 60s.
 ```bash
 git submodule update --init --recursive
 
-# Tests (SQLite CRUD, auth scopes, human-only rejection, turn/actor validation,
-# deterministic replay, persistence + rehydrate).
-cargo test
+# Tests. The workspace run covers all three crates: the server (SQLite CRUD, auth scopes,
+# human-only rejection, turn/actor validation, deterministic replay, rehydrate), plus the shared
+# rules engine and the AI. Use --release: the AI's search tests are far slower unoptimised.
+cargo test --release
 
 # Run.
 ADMIN_API_SECRET=dev DB_PATH=./jen.db cargo run -p jen-server

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["core", "server"]
-
-# `core/` is a git submodule (jen-godot-simulation @ rust-core) holding the shared `jen_core` crate.
+# `core/` is a git submodule (jen-godot-simulation @ rust-core) holding the shared `jen_core` rules
+# engine and the `jen_ai` agent that plays on it. It deliberately carries no workspace root of its
+# own — a nested workspace root would be a hard Cargo error here — so both crates are listed.
 # `git submodule update --init --recursive` before building.
+members = ["core/jen_core", "core/jen_ai", "server"]
