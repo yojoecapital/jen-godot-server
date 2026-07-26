@@ -31,6 +31,11 @@ function fmtTime(unix) {
 	return new Date(unix * 1000).toLocaleString();
 }
 
+// Scopes read the same wherever they appear: a comma-separated list, rendered in monospace.
+function scopeList(scopes) {
+	return Array.isArray(scopes) && scopes.length ? scopes.join(", ") : "—";
+}
+
 // ---- session ----
 
 async function refreshMe() {
@@ -44,7 +49,7 @@ function showSignedIn() {
 	$("login").classList.add("hidden");
 	$("whoami").classList.remove("hidden");
 	$("whoami-id").textContent = me.id;
-	$("whoami-scopes").textContent = (me.scopes || []).join(" · ");
+	$("whoami-scopes").textContent = scopeList(me.scopes);
 	$("matches").classList.remove("hidden");
 	$("matches-scope").textContent = isAdmin()
 		? "Showing every match on the server."
@@ -114,7 +119,7 @@ async function loadClients() {
 	for (const k of rows) {
 		const tr = document.createElement("tr");
 		tr.appendChild(cell(k.id, "mono"));
-		tr.appendChild(cell((k.scopes || []).join(" · ")));
+		tr.appendChild(cell(scopeList(k.scopes), "mono"));
 		tr.appendChild(cell(fmtTime(k.created_at)));
 		const disabled = k.id === me.id; // don't let admins delete the key they're using
 		tr.appendChild(actionCell("Revoke", async () => {

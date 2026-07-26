@@ -8,9 +8,9 @@
 </head>
 <body>
 	<header>
-		<h1>Jen&nbsp;·&nbsp;Server</h1>
+		<h1>JEN<span class="sub">server</span></h1>
 		<div id="whoami" class="whoami hidden">
-			<span id="whoami-id"></span>
+			<span id="whoami-id" class="who-id mono"></span>
 			<span id="whoami-scopes" class="scopes"></span>
 			<button id="logout" class="ghost">Sign out</button>
 		</div>
@@ -34,10 +34,12 @@
 				<button class="ghost" data-refresh="matches">Refresh</button>
 			</div>
 			<p id="matches-scope" class="muted"></p>
-			<table>
-				<thead><tr><th>Code</th><th>Owner</th><th>Seats</th><th>Status</th><th>Updated</th><th></th></tr></thead>
-				<tbody id="matches-body"></tbody>
-			</table>
+			<div class="table-wrap">
+				<table>
+					<thead><tr><th>Code</th><th>Owner</th><th>Seats</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+					<tbody id="matches-body"></tbody>
+				</table>
+			</div>
 			<p id="matches-empty" class="muted hidden">No matches.</p>
 		</section>
 
@@ -52,9 +54,9 @@
 				<label>New key id <input id="key-id" type="text" placeholder="e.g. alice"></label>
 				<fieldset>
 					<legend>Scopes</legend>
-					<label class="inline"><input type="checkbox" value="host_match" checked> host_match</label>
-					<label class="inline"><input type="checkbox" value="join_match" checked> join_match</label>
-					<label class="inline"><input type="checkbox" value="admin"> admin</label>
+					<label class="inline"><input type="checkbox" value="host_match" checked> <span class="mono">host_match</span></label>
+					<label class="inline"><input type="checkbox" value="join_match" checked> <span class="mono">join_match</span></label>
+					<label class="inline"><input type="checkbox" value="admin"> <span class="mono">admin</span></label>
 				</fieldset>
 				<button type="submit">Create key</button>
 			</form>
@@ -63,10 +65,12 @@
 				<code id="new-secret-value"></code>
 			</div>
 
-			<table>
-				<thead><tr><th>Id</th><th>Scopes</th><th>Created</th><th></th></tr></thead>
-				<tbody id="clients-body"></tbody>
-			</table>
+			<div class="table-wrap">
+				<table>
+					<thead><tr><th>Id</th><th>Scopes</th><th>Created</th><th></th></tr></thead>
+					<tbody id="clients-body"></tbody>
+				</table>
+			</div>
 		</section>
 	</main>
 
